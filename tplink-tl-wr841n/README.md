@@ -110,7 +110,7 @@ This was a **classic UART mistake**:
 
 📸 _Image: Final working wiring with ESP32_
 
-![ESP32 SETUP](images/esp32-working.jpg)
+![ESP32 SETUP](images/esp-working.jpg)
 
 📸 _Image: UART with ESP32_
 
