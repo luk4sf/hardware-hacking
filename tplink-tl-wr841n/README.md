@@ -30,12 +30,10 @@ Fortunately, TP-Link was kind enough to **label the UART pins** on the board:
 
 ## 🔌 Step 2: First Attempt — USB Cable Hack
 
-We had the **primitive idea** of using a regular USB cable.
+Our initial idea was to try a quick workaround by using a spare USB cable. We cut off the micro USB end, soldered female jumper wires to the internal leads, and connected them to male header pins we attached to the router’s UART pads.
 
-- We cut off the micro USB end.
-- Soldered **female jumper wires** to the inner wires.
-- Soldered **male headers** to the router's UART interface.
-- Connected directly to the PC.
+With everything wired up, we launched `picocom` and tried listening at 115200 baud. Unfortunately, we received no output at all.
+
 
 📸 _Image: USB cable hack_
 
@@ -45,12 +43,12 @@ We had the **primitive idea** of using a regular USB cable.
 
 ---
 
-## 🔬 Step 3: Logic Analyzer Debugging
+## 🔬 Step 3: Logic Analyzer Debugging	
 
-We connected a **logic analyzer** and viewed the signals in **PulseView**.
+To verify that the router’s UART was actually active, we connected a logic analyzer and monitored the signals using PulseView.
 
-- Detected clean UART signals at `115200 baud`.
-- Conclusion: **Connection worked electrically**, but USB wasn’t speaking UART.
+We observed consistent UART traffic at 115200 baud, confirming that the router was transmitting data correctly. This suggested the issue was with how we were connecting to the laptop — not with the UART lines themselves.
+
 
 📸 _Image: PulseView setup_
 
@@ -64,49 +62,38 @@ We connected a **logic analyzer** and viewed the signals in **PulseView**.
 
 ## ❌ Why USB ≠ UART?
 
-**USB and UART are entirely different protocols**:
+After researching the problem, we realized the USB connection wouldn’t work as intended because:
 
-- USB is packet-based and requires drivers.
-- UART is a simple asynchronous serial protocol (raw TX/RX lines).
-- You **cannot connect USB directly to UART** without a **USB-to-UART bridge**.
+- USB is a packet-based protocol with its own drivers and controller logic.
+- UART is a simple, asynchronous serial protocol that directly transmits bits over TX/RX lines.
 
+USB and UART are **not electrically or logically compatible**, so a direct connection between a USB port and UART pins won’t work. A **USB-to-UART bridge** is required to handle the protocol conversion.
 ---
 
 ## 🧠 Step 4: Arduino as USB-UART Passthrough
 
-We didn’t want to wait for a proper USB-UART adapter, so we:
+To avoid waiting for a dedicated USB-to-UART adapter, we tried using an Arduino Uno as a pass-through device. We uploaded a simple sketch to forward data between its UART pins and USB serial connection.
 
-- Used an **Arduino** as a serial passthrough.
-- Wired the router’s TX to Arduino RX and vice versa.
-- Flashed a simple passthrough sketch.
-
-**Result:** Partial success. We received **gibberish with some readable output**.
+This setup produced partial results — some readable output mixed with a lot of corrupted characters.
 
 ---
 
 ## ⚠️ Why Arduino Failed at 115200 Baud
 
-Arduino Uno (and similar 8-bit microcontrollers) are **too slow** to handle high-speed UART reliably at 115200 baud. The software serial (or even hardware serial with forwarding) couldn’t keep up with the data stream.
+The issue turned out to be related to the Arduino’s performance. At 115200 baud, the 8-bit microcontroller couldn’t consistently forward serial data without dropping bytes. This is a common limitation when using software or even hardware serial on slower boards.
 
 ---
 
 ## 💡 Step 5: ESP32 to the Rescue
 
-We used an **ESP32** instead:
+We moved on to an ESP32 board, which supports multiple hardware serial interfaces and can handle high baud rates more reliably.
 
-- Much faster CPU, proper hardware serial support.
-- Wired it correctly, but **still got garbled output**.
+After setting up the wiring, we again got mixed results. Eventually, we realized that the TX and RX lines needed to be **crossed**:
 
-After trial and error, we realized...
+- The router’s **TX** connects to the ESP32’s **RX**.
+- The router’s **RX** connects to the ESP32’s **TX**.
 
----
-
-## 🔀 TX/RX Must Be Crossed!
-
-This was a **classic UART mistake**:
-
-- The router's `TX` (transmit) must go to the ESP32’s `RX` (receive).
-- And vice versa: `RX` ↔ `TX`.
+After correcting the wiring, we received clear, readable UART output.
 
 📸 _Image: Final working wiring with ESP32_
 
@@ -116,32 +103,30 @@ This was a **classic UART mistake**:
 
 ![ESP32 SETUP](images/uart-passthrough.png)
 
-**After swapping the lines**, everything worked flawlessly. 🎉
 
 ---
 
 ## 🐚 Step 6: Root Shell!
 
-Once connected, we were **immediately dropped into a root shell** — no login prompt, no password. Jackpot.
+With everything set up properly, we connected via serial and were immediately presented with a **root shell**, without any login or password prompt. This confirmed that the device lacked any UART-level authentication.
 
 ---
 
 ## 🔐 Found: Hashed Root Password
 
-We discovered the root password stored as an **MD5 hash** in the `/etc/passwd` or `passwd.bak` file:
+We discovered the root password stored as an **MD5 hash** in the `/etc/passwd` file:
 
 📸 _Image: Passwd_
 
 ![passwd](images/uart-arduino-ide.png)
 
-admin:$1$$iC.dUsGpxNNJGeOm1dFio/:0:0:root:/:/bin/sh
 
 We're planning to **crack this hash** next.
 
 
 # 🔍 BusyBox on TP-Link TL-WR841N
 
-While exploring the router's UART shell, we discovered it runs **BusyBox**, a compact and highly configurable Unix utility suite. It replaces most common shell tools with a single small binary — ideal for low-resource embedded systems.
+While navigating the router's UART shell, we noticed that it’s using **BusyBox** — a lightweight collection of Unix utilities bundled into a single binary. It’s commonly found on embedded systems like routers because it provides essential command-line tools while keeping resource usage minimal.
 
 📸 _Image: BusyBox_
 
@@ -166,18 +151,10 @@ While exploring the router's UART shell, we discovered it runs **BusyBox**, a co
 - Always cross TX ↔ RX.
 - Arduino is too slow for high-speed UART passthrough.
 - ESP32 makes a great quick UART interface.
-- Embedded devices often lack security by default 😏
+- Embedded devices often lack security by default ^^
 
 ---
 
-
-## 🧪 Coming Next
-
-- Crack the MD5 hash.
-- Explore router firmware.
-- Try privilege escalation and network access.
-
----
 
 ## 🧠 Stay Curious, Hack Legally
 
