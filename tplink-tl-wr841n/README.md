@@ -13,6 +13,15 @@ Fortunately, TP-Link was kind enough to **label the UART pins** on the board:
 - `RX`
 - `TX`
 
+
+📸 _Image: TP-Link Router_
+
+![TP-Link Router](images/tp-link-router.jpg)
+
+📸 _Image: TP-Link Router Board_
+
+![TP-Link Router Board](images/tp-link-router-board.jpg)
+
 📸 _Image: UART Pin Labels_
 
 ![UART Pin Labels](images/uart-pins.jpg)
@@ -43,9 +52,13 @@ We connected a **logic analyzer** and viewed the signals in **PulseView**.
 - Detected clean UART signals at `115200 baud`.
 - Conclusion: **Connection worked electrically**, but USB wasn’t speaking UART.
 
+📸 _Image: PulseView setup_
+
+![Logic Analyzer Setup](images/logic-setup.jpg)
+
 📸 _Image: PulseView signals_
 
-![PulseView Signals](images/pulseview.jpg)
+![PulseView Signals](images/pulseview.png)
 
 ---
 
@@ -68,10 +81,6 @@ We didn’t want to wait for a proper USB-UART adapter, so we:
 - Flashed a simple passthrough sketch.
 
 **Result:** Partial success. We received **gibberish with some readable output**.
-
-📸 _Image: Arduino passthrough setup_
-
-![Arduino Passthrough](images/arduino.jpg)
 
 ---
 
@@ -101,7 +110,11 @@ This was a **classic UART mistake**:
 
 📸 _Image: Final working wiring with ESP32_
 
-![Working UART](images/esp32-working.jpg)
+![ESP32 SETUP](images/esp32-working.jpg)
+
+📸 _Image: UART with ESP32_
+
+![ESP32 SETUP](images/uart-passthrough.png)
 
 **After swapping the lines**, everything worked flawlessly. 🎉
 
@@ -117,9 +130,22 @@ Once connected, we were **immediately dropped into a root shell** — no login p
 
 We discovered the root password stored as an **MD5 hash** in the `/etc/passwd` or `passwd.bak` file:
 
+📸 _Image: Passwd_
+
+![passwd](images/uart-arduino-ide.png)
+
 admin:$1$$iC.dUsGpxNNJGeOm1dFio/:0:0:root:/:/bin/sh
 
 We're planning to **crack this hash** next.
+
+
+# 🔍 BusyBox on TP-Link TL-WR841N
+
+While exploring the router's UART shell, we discovered it runs **BusyBox**, a compact and highly configurable Unix utility suite. It replaces most common shell tools with a single small binary — ideal for low-resource embedded systems.
+
+📸 _Image: BusyBox_
+
+![BusyBox](images/busybox.png)
 
 ---
 
@@ -143,11 +169,6 @@ We're planning to **crack this hash** next.
 - Embedded devices often lack security by default 😏
 
 ---
-
-## 📁 Images
-
-Make sure to place all images in a subfolder like `images/`, e.g.:
-
 
 
 ## 🧪 Coming Next
